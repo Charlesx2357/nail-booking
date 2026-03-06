@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { tryCreateBooking } from "../_store";
+// import { tryCreateBooking } from "../_store";
+import { supabase } from "@/lib/supabaseClient";
 
 type Body = {
   date: string;       // YYYY-MM-DD
@@ -35,15 +36,23 @@ export async function POST(req: NextRequest) {
   }
 
   // MVP：预约时长先固定 60 分钟
-  const result = tryCreateBooking({
+  const { error } = await supabase.from("bookings").insert({
     date,
-    start,
-    durationMin: 60,
-    wechatId: wechatId.trim(),
+    time: start,
+    wechat_id: wechatId.trim(),
+    status: "booked",
   });
 
-  if (!result.ok) {
-    return Response.json({ error: result.reason }, { status: 409 });
+  if (error) {
+    // 唯一约束冲突：说明这个时间已经被别人约走了
+    if (error.code === "23505") {
+      return Response.json({ error: "该时间已被预约" }, { status: 409 });
+    }
+
+    return Response.json(
+      { error: `Failed to create booking: ${error.message}` },
+      { status: 500 }
+    );
   }
 
   return Response.json({ ok: true });
