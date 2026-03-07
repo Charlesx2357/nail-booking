@@ -10,9 +10,10 @@ function todayLocal(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-export default function Home() {
-  const [date, setDate] = useState<string>(todayLocal());
-  const [loading, setLoading] = useState(false);
+export default function Home() {//看起来是给左侧赋值，但本质上是在声明组件的多个 state。每个 useState 都在 React 内部占据一个固定顺序的位置，并指定这个 state 的初始值和类型；左侧通过数组解构拿到当前值和对应的 setter 函数。
+
+  const [date, setDate] = useState<string>(todayLocal());//右侧括号内的值只有在初始化时才有效果，第二次以后重新渲染则跳过
+  const [loading, setLoading] = useState(false);//useState Function is order sensitive
   const [slots, setSlots] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,11 +48,17 @@ export default function Home() {
 
   useEffect(() => {
     refreshSlots();
+
+    const timer = setInterval(() => {
+      refreshSlots();
+    }, 30000);//polling interval setting
+
     // 切日期时清理预约状态
     setSelectedSlot(null);
     setWechatId("");
     setSubmitError(null);
     setSubmitOk(null);
+    return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
@@ -96,7 +103,7 @@ export default function Home() {
   return (
     <main className="min-h-screen p-6">
       <div className="mx-auto max-w-2xl space-y-4">
-        <h1 className="text-2xl font-semibold">自宅美甲预约（MVP）</h1>
+        <h1 className="text-2xl font-semibold">SugarCoat美甲预约</h1>
 
         <div className="rounded-xl border p-4 space-y-3">
           <label className="block text-sm font-medium">选择日期</label>
@@ -144,7 +151,7 @@ export default function Home() {
                     你选择了：<span className="font-medium">{date} {selectedSlot}</span>
                   </div>
 
-                  <label className="block text-sm font-medium">微信号（暂不验证）</label>
+                  <label className="block text-sm font-medium">微信号</label>
                   <input
                     value={wechatId}
                     onChange={(e) => setWechatId(e.target.value)}
@@ -181,6 +188,7 @@ export default function Home() {
 
                   <div className="text-xs text-gray-500">
                     说明：当前预约暂存在本地开发服务器内存中，重启 pnpm dev 会清空。下一步会接入 Supabase 永久保存。
+                    已经升级到supabase,interval 5s polling
                   </div>
                 </div>
               )}

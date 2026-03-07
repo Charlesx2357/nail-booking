@@ -1,25 +1,14 @@
 import { NextRequest } from "next/server";
-import { listBookingsByDate } from "../_store";
+import { supabase } from "@/lib/supabaseClient";
 
 const STEP_MIN = 15;
 
-function getAvailabilityBlocksForDate() {
-  return [
-    { start: "10:00", end: "12:00" },
-    { start: "13:00", end: "17:00" },
-  ];
-}
-
-function toMinutes(t: string): number {
-  const [hh, mm] = t.split(":").map(Number);
-  return hh * 60 + mm;
-}
-
-function toHHMM(m: number): string {
-  const hh = Math.floor(m / 60);
-  const mm = m % 60;
-  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-}
+// function getAvailabilityBlocksForDate() {
+//   return [
+//     { start: "10:00", end: "12:00" },
+//     { start: "13:00", end: "17:00" },
+//   ];
+// }
 
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date");
@@ -31,34 +20,39 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const blocks = getAvailabilityBlocksForDate();
-  const bookings = listBookingsByDate(date);
+  // const blocks = getAvailabilityBlocksForDate();
+  const { data: slotRows, error: slotError } = await supabase
+    .from("availability_slots")//equivalent SQL sentence
+    .select("time")
+    .eq("date", date)
+    .eq("is_open", true)
+    .order("time", { ascending: true });
 
-  const slots: number[] = [];
-  for (const b of blocks) {
-    const start = toMinutes(b.start);
-    const end = toMinutes(b.end);
-
-    for (let t = start; t + STEP_MIN <= end; t += STEP_MIN) {
-      slots.push(t);
-    }
+  if (slotError) {
+    return Response.json(
+      { error: `Failed to load availability: ${slotError.message}` },
+      { status: 500 }
+    );
   }
-
-  const unavailable = new Set<number>();
-  for (const bk of bookings) {
-    const bookingStart = toMinutes(bk.start);
-    const bookingEnd = bookingStart + bk.durationMin;
-
-    for (const t of slots) {
-      if (t >= bookingStart && t < bookingEnd) {
-        unavailable.add(t);
-      }
-    }
+  const { data: bookingRows, error: bookingError } = await supabase
+    .from("bookings")
+    .select("time")
+    .eq("date", date)
+    .eq("status", "booked");
+  
+  if (bookingError){
+    return Response.json(
+      {error:`Failed to load bookings:${bookingError.message}`},
+      {status:500}
+    );
   }
-
-  const available = slots
-    .filter((t) => !unavailable.has(t))
-    .map(toHHMM);
+  const bookedTimes = new Set(
+    (bookingRows ?? []).map((row) => row.time.slice(0, 5))
+  );
+  
+  const available = (slotRows ?? [])
+    .map((row) => row.time.slice(0, 5))
+    .filter((time) => !bookedTimes.has(time));
 
   return Response.json({
     date,
