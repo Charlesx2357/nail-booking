@@ -1,3 +1,4 @@
+
 import { NextRequest } from "next/server";
 // import { tryCreateBooking } from "../_store";
 import { supabase } from "@/lib/supabaseClient";
@@ -7,6 +8,13 @@ type Body = {
   start: string;      // HH:MM
   wechatId: string;
 };
+
+const BOOKING_DURATION_MIN = 90;
+
+function toMinutes(t: string): number {
+  const [hh, mm] = t.split(":").map(Number);
+  return hh * 60 + mm;
+}
 
 function isValidDate(d: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -35,7 +43,33 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "微信号太短了" }, { status: 400 });
   }
 
-  // MVP：预约时长先固定 60 分钟
+    // 查询当天已有预约
+  const { data: existingRows, error: existingError } = await supabase
+    .from("bookings")
+    .select("time")
+    .eq("date", date)
+    .eq("status", "booked");
+
+  if (existingError) {
+    return Response.json(
+      { error: `Failed to check booking conflicts: ${existingError.message}` },
+      { status: 500 }
+    );
+  }
+
+  const newStart = toMinutes(start);
+  const newEnd = newStart + BOOKING_DURATION_MIN;
+
+  const hasOverlap = (existingRows ?? []).some((row) => {
+    const oldStart = toMinutes(row.time.slice(0, 5));
+    const oldEnd = oldStart + BOOKING_DURATION_MIN;
+    return newStart < oldEnd && oldStart < newEnd;
+  });
+
+  if (hasOverlap) {
+    return Response.json({ error: "该时间段已被预约" }, { status: 409 });
+  }
+
   const { error } = await supabase.from("bookings").insert({
     date,
     time: start,

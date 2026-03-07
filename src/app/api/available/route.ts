@@ -2,14 +2,7 @@ import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 
 const STEP_MIN = 15;
-
-// function getAvailabilityBlocksForDate() {
-//   return [
-//     { start: "10:00", end: "12:00" },
-//     { start: "13:00", end: "17:00" },
-//   ];
-// }
-
+const BOOKING_DURATION_MIN = 60;
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date");
 
@@ -19,6 +12,16 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
   }
+  function toMinutes(t: string): number {
+  const [hh, mm] = t.split(":").map(Number);
+  return hh * 60 + mm;
+}
+
+function toHHMM(m: number): string {
+  const hh = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
 
   // const blocks = getAvailabilityBlocksForDate();
   const { data: slotRows, error: slotError } = await supabase
@@ -46,13 +49,40 @@ export async function GET(req: NextRequest) {
       {status:500}
     );
   }
-  const bookedTimes = new Set(
-    (bookingRows ?? []).map((row) => row.time.slice(0, 5))
+  const bookings = (bookingRows ?? []).map((row) => ({
+    start: row.time.slice(0, 5),
+    durationMin: BOOKING_DURATION_MIN,
+  }));
+
+  const openSlotMinutes: number[] = (slotRows ?? []).map((row) =>
+    toMinutes(row.time.slice(0, 5))
   );
-  
-  const available = (slotRows ?? [])
-    .map((row) => row.time.slice(0, 5))
-    .filter((time) => !bookedTimes.has(time));
+  const openSlotSet = new Set(openSlotMinutes);
+
+  const unavailable = new Set<number>();
+
+  for (const bk of bookings) {
+    const bookingStart = toMinutes(bk.start);
+    const bookingEnd = bookingStart + bk.durationMin;
+
+    for (let t = bookingStart; t < bookingEnd; t += STEP_MIN) {
+      unavailable.add(t);
+    }
+  }
+
+  const requiredSteps = BOOKING_DURATION_MIN / STEP_MIN;
+
+  const available = openSlotMinutes
+    .filter((start) => {
+      for (let i = 0; i < requiredSteps; i++) {
+        const t = start + i * STEP_MIN;
+        if (!openSlotSet.has(t) || unavailable.has(t)) {
+          return false;
+        }
+      }
+      return true;
+    })
+    .map(toHHMM);
 
   return Response.json({
     date,
