@@ -21,7 +21,8 @@ type Booking = {
 
 export default function AdminBookingsPage() {
   const [date, setDate] = useState(todayLocal());
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [futureBookings, setFutureBookings] = useState<Booking[]>([]);
+  const [pastBookings, setPastBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +37,12 @@ export default function AdminBookingsPage() {
         throw new Error(j.error ?? `HTTP ${res.status}`);
       }
 
-      const j: { bookings: Booking[] } = await res.json();
-      setBookings(j.bookings);
+      const j: {
+        futureBookings: Booking[];
+        pastBookings: Booking[];
+      } = await res.json();
+      setFutureBookings(j.futureBookings ?? []);
+      setPastBookings(j.pastBookings ?? []);
     } catch (e: unknown) {
       const message =
         e instanceof Error ? e.message : typeof e === "string" ? e : "Unknown error";
@@ -71,32 +76,67 @@ export default function AdminBookingsPage() {
           {error && <p className="text-sm text-red-600">错误：{error}</p>}
 
           {!loading && !error && (
-            <>
-              {bookings.length === 0 ? (
-                <p className="text-sm text-gray-500">当天没有预约</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border-collapse border text-sm">
-                    <thead>
-                      <tr className="bg-gray-50">
-                        <th className="border px-4 py-2 text-left">时间</th>
-                        <th className="border px-4 py-2 text-left">微信号</th>
-                        <th className="border px-4 py-2 text-left">状态</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bookings.map((b) => (
-                        <tr key={b.id}>
-                          <td className="border px-4 py-2">{b.time.slice(0, 5)}</td>
-                          <td className="border px-4 py-2">{b.wechat_id}</td>
-                          <td className="border px-4 py-2">{b.status}</td>
+            <div className="space-y-6">
+              <div>
+                <h2 className="mb-2 text-lg font-medium">未来30天预约</h2>
+                {futureBookings.length === 0 ? (
+                  <p className="text-sm text-gray-500">未来30天没有预约</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse border text-sm">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border px-4 py-2 text-left">日期</th>
+                          <th className="border px-4 py-2 text-left">时间</th>
+                          <th className="border px-4 py-2 text-left">微信号</th>
+                          <th className="border px-4 py-2 text-left">状态</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
+                      </thead>
+                      <tbody>
+                        {futureBookings.map((b) => (
+                          <tr key={`future-${b.id}`}>
+                            <td className="border px-4 py-2">{b.date}</td>
+                            <td className="border px-4 py-2">{b.time.slice(0,5)}</td>
+                            <td className="border px-4 py-2">{b.wechat_id}</td>
+                            <td className="border px-4 py-2">{b.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h2 className="mb-2 text-lg font-medium">过去30天预约</h2>
+                {pastBookings.length === 0 ? (
+                  <p className="text-sm text-gray-500">过去30天没有预约</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border-collapse border text-sm">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th className="border px-4 py-2 text-left">日期</th>
+                          <th className="border px-4 py-2 text-left">时间</th>
+                          <th className="border px-4 py-2 text-left">微信号</th>
+                          <th className="border px-4 py-2 text-left">状态</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pastBookings.map((b) => (
+                          <tr key={`past-${b.id}`}>
+                            <td className="border px-4 py-2">{b.date}</td>
+                            <td className="border px-4 py-2">{b.time.slice(0,5)}</td>
+                            <td className="border px-4 py-2">{b.wechat_id}</td>
+                            <td className="border px-4 py-2">{b.status}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
