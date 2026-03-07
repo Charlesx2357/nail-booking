@@ -17,10 +17,16 @@ export async function GET(req: NextRequest) {
   futureEnd.setDate(futureEnd.getDate() + 30);
 
   const pastStart = new Date(baseDate);
+  const yesterday = new Date(baseDate);
+  
   pastStart.setDate(pastStart.getDate() - 30);
+  yesterday.setDate(yesterday.getDate()-1);
 
   const futureEndStr = futureEnd.toISOString().slice(0, 10);
   const pastStartStr = pastStart.toISOString().slice(0, 10);
+
+
+  const yesterdayStr = yesterday.toISOString().slice(0,10);
 
   const { data: futureBookings, error: futureError } = await supabase
     .from("bookings")
@@ -34,7 +40,7 @@ export async function GET(req: NextRequest) {
     .from("bookings")
     .select("*")
     .gte("date", pastStartStr)
-    .lte("date", date)
+    .lte("date", yesterdayStr)
     .order("date", { ascending: false })
     .order("time", { ascending: true });
 
