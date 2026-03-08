@@ -1,5 +1,8 @@
 import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { BOOKING_WINDOW_DAYS } from "@/lib/bookingConfig";
+import { formatLocalDate } from "@/lib/time";
+
 
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date");
@@ -14,19 +17,17 @@ export async function GET(req: NextRequest) {
   const baseDate = new Date(`${date}T00:00:00`);
 
   const futureEnd = new Date(baseDate);
-  futureEnd.setDate(futureEnd.getDate() + 30);
+  futureEnd.setDate(futureEnd.getDate() + BOOKING_WINDOW_DAYS);
 
   const pastStart = new Date(baseDate);
   const yesterday = new Date(baseDate);
-  
-  pastStart.setDate(pastStart.getDate() - 30);
+
+  pastStart.setDate(pastStart.getDate() - BOOKING_WINDOW_DAYS);
   yesterday.setDate(yesterday.getDate()-1);
 
-  const futureEndStr = futureEnd.toISOString().slice(0, 10);
-  const pastStartStr = pastStart.toISOString().slice(0, 10);
-
-
-  const yesterdayStr = yesterday.toISOString().slice(0,10);
+  const futureEndStr = formatLocalDate(futureEnd);
+  const pastStartStr = formatLocalDate(pastStart);
+  const yesterdayStr = formatLocalDate(yesterday);
 
   const { data: futureBookings, error: futureError } = await supabase
     .from("bookings")

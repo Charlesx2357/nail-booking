@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-function todayLocal(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
+import { todayLocal } from "@/lib/time";
+// function todayLocal(): string {
+//   const d = new Date();
+//   const yyyy = d.getFullYear();
+//   const mm = String(d.getMonth() + 1).padStart(2, "0");
+//   const dd = String(d.getDate()).padStart(2, "0");
+//   return `${yyyy}-${mm}-${dd}`;
+// }
 
 type Booking = {
   id: number;

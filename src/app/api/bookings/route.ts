@@ -1,61 +1,99 @@
 import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { BOOKING_DURATION_MIN } from "@/lib/bookingConfig";
 
-export async function GET(req: NextRequest) {
-  const date = req.nextUrl.searchParams.get("date");
+type Body = {
+  date: string;
+  start: string;
+  wechatId: string;
+};
 
-  if (!date) {
+function isValidDate(d: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(d);
+}
+
+function isValidTime(t: string) {
+  return /^\d{2}:\d{2}$/.test(t);
+}
+
+function toMinutes(t: string): number {
+  const [hh, mm] = t.split(":").map(Number);
+  return hh * 60 + mm;
+}
+
+export async function POST(req: NextRequest) {
+  console.log("POST /api/bookings reached");
+  let body: Body;
+
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { date, start, wechatId } = body;
+
+  if (!date || !start || !wechatId) {
     return Response.json(
-      { error: "Missing ?date=YYYY-MM-DD" },
+      { error: "Missing fields: date/start/wechatId" },
       { status: 400 }
     );
   }
 
-  const baseDate = new Date(`${date}T00:00:00`);
-
-  const futureEndDate = new Date(baseDate);
-  futureEndDate.setDate(futureEndDate.getDate() + 30);
-  const futureEndDateStr = futureEndDate.toISOString().slice(0, 10);
-
-  const pastStartDate = new Date(baseDate);
-  pastStartDate.setDate(pastStartDate.getDate() - 30);
-  const pastStartDateStr = pastStartDate.toISOString().slice(0, 10);
-
-  const { data: futureBookings, error: futureError } = await supabase
-    .from("bookings")
-    .select("id, date, time, wechat_id, status, created_at")
-    .gte("date", date)
-    .lte("date", futureEndDateStr)
-    .order("date", { ascending: true })
-    .order("time", { ascending: true });
-
-  const { data: pastBookings, error: pastError } = await supabase
-    .from("bookings")
-    .select("id, date, time, wechat_id, status, created_at")
-    .gte("date", pastStartDateStr)
-    .lte("date", date)
-    .order("date", { ascending: false })
-    .order("time", { ascending: true });
-
-  if (futureError) {
+  if (!isValidDate(date) || !isValidTime(start)) {
     return Response.json(
-      { error: `Failed to load future bookings: ${futureError.message}` },
+      { error: "Invalid date or time format" },
+      { status: 400 }
+    );
+  }
+
+  if (wechatId.trim().length < 2) {
+    return Response.json({ error: "微信号太短了" }, { status: 400 });
+  }
+
+  const { data: existingRows, error: existingError } = await supabase
+    .from("bookings")
+    .select("time")
+    .eq("date", date)
+    .eq("status", "booked");
+
+  if (existingError) {
+    return Response.json(
+      { error: `Failed to check booking conflicts: ${existingError.message}` },
       { status: 500 }
     );
   }
 
-  if (pastError) {
-    return Response.json(
-      { error: `Failed to load past bookings: ${pastError.message}` },
-      { status: 500 }
-    );
-  }
+  const newStart = toMinutes(start);
+  const newEnd = newStart + BOOKING_DURATION_MIN;
 
-  return Response.json({
-    selectedDate: date,
-    futureEndDate: futureEndDateStr,
-    pastStartDate: pastStartDateStr,
-    futureBookings: futureBookings ?? [],
-    pastBookings: pastBookings ?? [],
+  const hasConflict = (existingRows ?? []).some((row) => {
+    const oldStart = toMinutes(row.time.slice(0, 5));
+    const oldEnd = oldStart + BOOKING_DURATION_MIN;
+    return newStart < oldEnd && oldStart < newEnd;
   });
+
+  if (hasConflict) {
+    return Response.json({ error: "该时间段已被预约" }, { status: 409 });
+  }
+
+  const { error } = await supabase.from("bookings").insert({
+    date,
+    time: start,
+    wechat_id: wechatId.trim(),
+    status: "booked",
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      return Response.json({ error: "该时间已被预约" }, { status: 409 });
+    }
+
+    return Response.json(
+      { error: `Failed to create booking: ${error.message}` },
+      { status: 500 }
+    );
+  }
+
+  return Response.json({ ok: true });
 }
