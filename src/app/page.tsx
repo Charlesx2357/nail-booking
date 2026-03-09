@@ -34,7 +34,7 @@ export default function Home() {//看起来是给左侧赋值，但本质上是�
   //   return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
   // }
   const title = useMemo(
-  () => `course开始时间`,[date]
+  () => `Course Starts at/开始时间`,[date]
 );
 
   async function refreshSlots() {
@@ -112,7 +112,11 @@ const renderableSlots = useMemo(() => {
         throw new Error(j.error ?? `HTTP ${res.status}`);
       }
 
+      const successMessage = `预约成功/Reservation Succeeded\n${date} ${selectedSlot}\n${wechatId}`;
+
       setSubmitOk(`预约成功：${date} ${selectedSlot}`);
+      alert(successMessage);
+      
       setSelectedSlot(null);
       setWechatId("");
 
@@ -130,10 +134,10 @@ const renderableSlots = useMemo(() => {
   return (
     <main className="min-h-screen p-6">
       <div className="mx-auto max-w-2xl space-y-4">
-        <h1 className="text-2xl font-semibold">SugarCoat美甲预约</h1>
+        <h1 className="text-2xl font-semibold">SugarCoat Nail</h1>
 
         <div className="rounded-xl border p-4 space-y-3">
-          <label className="block text-sm font-medium">选择日期</label>
+          <label className="block text-sm font-medium">Date/选择日期</label>
           <input
             type="date"
             value={date}
@@ -143,14 +147,14 @@ const renderableSlots = useMemo(() => {
 
           <h2 className="text-lg font-medium">{title}</h2>
 
-          {loading && <p className="text-sm">加载中…</p>}
+          {loading && <p className="text-sm">loading加载中…</p>}
           {error && <p className="text-sm text-red-600">错误：{error}</p>}
 
           {!loading && !error && (
             <>
               <div className="flex flex-wrap gap-2">
                 {renderableSlots.length === 0 ? (
-                  <span className="text-sm text-gray-500">当天没有可预约时间</span>
+                  <span className="text-sm text-gray-500">No available time today/当天没有可预约时间</span>
                 ) : (
                   renderableSlots.map((t) => (
                     <button
@@ -175,14 +179,14 @@ const renderableSlots = useMemo(() => {
               {selectedSlot && (
                 <div className="mt-4 rounded-lg border p-3 space-y-2">
                   <div className="text-sm">
-                    你选择了：<span className="font-medium">{date} {selectedSlot}</span>
+                    Selecting/你选择了：<span className="font-medium">{date} {selectedSlot}</span>
                   </div>
 
                   <label className="block text-sm font-medium">微信号</label>
                   <input
                     value={wechatId}
                     onChange={(e) => setWechatId(e.target.value)}
-                    placeholder="例如：wxid_..."
+                    placeholder="eg：wxid_..."
                     className="w-full rounded-md border px-3 py-2"
                   />
 
@@ -193,7 +197,7 @@ const renderableSlots = useMemo(() => {
                       disabled={submitLoading || wechatId.trim().length < 3}
                       className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50 disabled:opacity-50"
                     >
-                      {submitLoading ? "提交中…" : "确认预约"}
+                      {submitLoading ? "提交中…/Submitting..." : "预约/Reservate"}
                     </button>
 
                     <button
@@ -206,11 +210,11 @@ const renderableSlots = useMemo(() => {
                       }}
                       className="rounded-md border px-3 py-2 text-sm hover:bg-gray-50"
                     >
-                      取消
+                      取消/cancel
                     </button>
                   </div>
 
-                  {submitError && <div className="text-sm text-red-600">预约失败：{submitError}</div>}
+                  {submitError && <div className="text-sm text-red-600">Reservation Failed/预约失败：{submitError}</div>}
                   {submitOk && <div className="text-sm text-green-700">{submitOk}</div>}
 
                   <div className="text-xs text-gray-500">
