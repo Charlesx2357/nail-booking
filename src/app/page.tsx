@@ -168,7 +168,7 @@ const renderableSlots = useMemo(() => {
                       className={`rounded-full border px-3 py-1 text-sm hover:bg-gray-50 ${
                         selectedSlot === t ? "bg-gray-100" : ""
                       }`}
-                      title="点击后填写微信号预约"
+                      title="填写微信号预约"
                     >
                       {t}
                     </button>

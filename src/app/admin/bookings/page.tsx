@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { todayLocal } from "@/lib/time";
-// function todayLocal(): string {
-//   const d = new Date();
-//   const yyyy = d.getFullYear();
-//   const mm = String(d.getMonth() + 1).padStart(2, "0");
-//   const dd = String(d.getDate()).padStart(2, "0");
-//   return `${yyyy}-${mm}-${dd}`;
-// }
+import { BOOKING_WINDOW_DAYS } from "@/lib/bookingConfig";
 
 type Booking = {
   id: number;
@@ -59,11 +53,11 @@ export default function AdminBookingsPage() {
   return (
     <main className="min-h-screen p-6">
       <div className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-2xl font-semibold">后台管理 - 预约列表</h1>
+        <h1 className="text-2xl font-semibold">managemant - reservation chart</h1>
 
         <div className="rounded-xl border p-4 space-y-4">
           <div>
-            <label className="mb-2 block text-sm font-medium">选择日期</label>
+            <label className="mb-2 block text-sm font-medium">select date</label>
             <input
               type="date"
               value={date}
@@ -72,24 +66,24 @@ export default function AdminBookingsPage() {
             />
           </div>
 
-          {loading && <p className="text-sm">加载中…</p>}
-          {error && <p className="text-sm text-red-600">错误：{error}</p>}
+          {loading && <p className="text-sm">loading…</p>}
+          {error && <p className="text-sm text-red-600">error：{error}</p>}
 
           {!loading && !error && (
             <div className="space-y-6">
               <div>
-                <h2 className="mb-2 text-lg font-medium">未来30天预约</h2>
+                <h2 className="mb-2 text-lg font-medium">reservation in future {BOOKING_WINDOW_DAYS} days</h2>
                 {futureBookings.length === 0 ? (
-                  <p className="text-sm text-gray-500">未来30天没有预约</p>
+                  <p className="text-sm text-gray-500">no reservation in future {BOOKING_WINDOW_DAYS} days</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full border-collapse border text-sm">
                       <thead>
                         <tr className="bg-gray-50">
-                          <th className="border px-4 py-2 text-left">日期</th>
-                          <th className="border px-4 py-2 text-left">时间</th>
-                          <th className="border px-4 py-2 text-left">微信号</th>
-                          <th className="border px-4 py-2 text-left">状态</th>
+                          <th className="border px-4 py-2 text-left">date</th>
+                          <th className="border px-4 py-2 text-left">time</th>
+                          <th className="border px-4 py-2 text-left">contact</th>
+                          <th className="border px-4 py-2 text-left">status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -108,18 +102,18 @@ export default function AdminBookingsPage() {
               </div>
 
               <div>
-                <h2 className="mb-2 text-lg font-medium">过去30天预约</h2>
+                <h2 className="mb-2 text-lg font-medium">reservation in past {BOOKING_WINDOW_DAYS} days</h2>
                 {pastBookings.length === 0 ? (
-                  <p className="text-sm text-gray-500">过去30天没有预约</p>
+                  <p className="text-sm text-gray-500">no resercation in past {BOOKING_WINDOW_DAYS} days</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-full border-collapse border text-sm">
                       <thead>
                         <tr className="bg-gray-50">
-                          <th className="border px-4 py-2 text-left">日期</th>
-                          <th className="border px-4 py-2 text-left">时间</th>
-                          <th className="border px-4 py-2 text-left">微信号</th>
-                          <th className="border px-4 py-2 text-left">状态</th>
+                          <th className="border px-4 py-2 text-left">date</th>
+                          <th className="border px-4 py-2 text-left">time</th>
+                          <th className="border px-4 py-2 text-left">contact</th>
+                          <th className="border px-4 py-2 text-left">status</th>
                         </tr>
                       </thead>
                       <tbody>

@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { STEP_MIN, BOOKING_DURATION_MIN } from "@/lib/bookingConfig";
+import { toMinutes, toHHMM } from "@/lib/time";
+import { buildUnavailableSlots } from "@/lib/bookingLogic";
 
-const STEP_MIN = 15;
-const BOOKING_DURATION_MIN = 60;
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date");
 
@@ -12,18 +13,7 @@ export async function GET(req: NextRequest) {
       { status: 400 }
     );
   }
-  function toMinutes(t: string): number {
-  const [hh, mm] = t.split(":").map(Number);
-  return hh * 60 + mm;
-}
 
-function toHHMM(m: number): string {
-  const hh = Math.floor(m / 60);
-  const mm = m % 60;
-  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
-}
-
-  // const blocks = getAvailabilityBlocksForDate();
   const { data: slotRows, error: slotError } = await supabase
     .from("availability_slots")//equivalent SQL sentence
     .select("time")
@@ -59,17 +49,16 @@ function toHHMM(m: number): string {
   );
   const openSlotSet = new Set(openSlotMinutes);
 
-  const unavailable = new Set<number>();
 
-  for (const bk of bookings) {
-    const bookingStart = toMinutes(bk.start);
-    const bookingEnd = bookingStart + bk.durationMin;
+const bookingStarts = (bookingRows ?? []).map((row) =>
+  toMinutes(row.time.slice(0, 5))
+);
 
-    for (let t = bookingStart; t < bookingEnd; t += STEP_MIN) {
-      unavailable.add(t);
-    }
-  }
-
+const unavailable = buildUnavailableSlots(
+  bookingStarts,
+  BOOKING_DURATION_MIN,
+  STEP_MIN
+);
   const requiredSteps = BOOKING_DURATION_MIN / STEP_MIN;
 
   const available = openSlotMinutes

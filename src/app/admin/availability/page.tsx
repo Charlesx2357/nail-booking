@@ -58,7 +58,7 @@ export default function AdminAvailabilityPage() {
       }
 
       const j: { count: number } = await res.json();
-      setMessage(`已生成 ${j.count} 个时间槽`);
+      setMessage(`${j.count} time slot(s) have been produced`);
       await loadSlots();
     } catch (e: unknown) {
       const message =
@@ -99,11 +99,11 @@ export default function AdminAvailabilityPage() {
   return (
     <main className="min-h-screen p-6">
       <div className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-2xl font-semibold">后台管理 - 可预约时间</h1>
+        <h1 className="text-2xl font-semibold">managemant - availabletime</h1>
 
         <div className="rounded-xl border p-4 space-y-4">
           <div>
-            <label className="mb-2 block text-sm font-medium">选择日期</label>
+            <label className="mb-2 block text-sm font-medium">select date</label>
             <input
               type="date"
               value={date}
@@ -114,7 +114,7 @@ export default function AdminAvailabilityPage() {
 
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <label className="mb-2 block text-sm font-medium">开始时间</label>
+              <label className="mb-2 block text-sm font-medium">start time</label>
               <input
                 type="time"
                 value={start}
@@ -124,7 +124,7 @@ export default function AdminAvailabilityPage() {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">结束时间</label>
+              <label className="mb-2 block text-sm font-medium">end time</label>
               <input
                 type="time"
                 value={end}
@@ -138,20 +138,20 @@ export default function AdminAvailabilityPage() {
               onClick={generateSlots}
               className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
             >
-              生成 15 分钟时间槽
+              generate 15-mins time slots
             </button>
           </div>
 
           {message && <p className="text-sm text-green-700">{message}</p>}
-          {error && <p className="text-sm text-red-600">错误：{error}</p>}
-          {loading && <p className="text-sm">加载中…</p>}
+          {error && <p className="text-sm text-red-600">error：{error}</p>}
+          {loading && <p className="text-sm">Loading…</p>}
 
           {!loading && (
             <div>
-              <h2 className="mb-2 text-lg font-medium">当天已开放的时间</h2>
+              <h2 className="mb-2 text-lg font-medium">available time today</h2>
 
               {slots.length === 0 ? (
-                <p className="text-sm text-gray-500">当天还没有可预约时间</p>
+                <p className="text-sm text-gray-500">no available time today</p>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   {slots.map((t) => (
@@ -160,7 +160,7 @@ export default function AdminAvailabilityPage() {
                       type="button"
                       onClick={() => deleteSlot(t)}
                       className="rounded-full border px-3 py-1 text-sm hover:bg-gray-50"
-                      title="点击删除这个时间槽"
+                      title="click to delete the time slot"
                     >
                       {t} ×
                     </button>
