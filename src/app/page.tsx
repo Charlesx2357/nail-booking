@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { todayLocal, toMinutes, toHHMM } from "@/lib/time";
+import {PROTECTED_TIME_IN_MINUTE} from "@/lib/bookingConfig";
 // function todayLocal(): string {
 //   const d = new Date();
 //   const yyyy = d.getFullYear();
@@ -39,6 +40,15 @@ export default function Home() {//看起来是给左侧赋值，但本质上是�
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [deletingBookingId, setDeletingBookingId] = useState<number | null>(null);
+
+  function getBookingStartMs(booking: MyBooking): number {
+    return new Date(`${booking.date}T${booking.time}`).getTime();
+  }
+
+  function canDeleteBooking(booking: MyBooking): boolean {
+    const diffMs = getBookingStartMs(booking) - Date.now();
+    return diffMs >= PROTECTED_TIME_IN_MINUTE * 60 * 1000;
+  }
 
   // function toMinutes(t: string): number {
   //   const [hh, mm] = t.split(":").map(Number);
@@ -184,6 +194,20 @@ const renderableSlots = useMemo(() => {
 
   async function deleteMyBooking(bookingId: number) {
     const normalizedWechatId = lookupWechatId.trim();
+
+    const targetBooking = myBookings.find((b) => b.id === bookingId);
+
+    if (!targetBooking) {
+      setLookupError("未找到该预约");
+      return;
+    }
+
+    if (!canDeleteBooking(targetBooking)) {
+      const message = `距离预约开始不足${PROTECTED_TIME_IN_MINUTE / 60}小时，无法删除`;
+      setLookupError(message);
+      alert(message);
+      return;
+    }
 
     if (normalizedWechatId.length < 2) {
       setLookupError("Please insert your contact / 请输入正确的微信号");
@@ -369,8 +393,13 @@ const renderableSlots = useMemo(() => {
                           <button
                             type="button"
                             onClick={() => deleteMyBooking(b.id)}
-                            disabled={deletingBookingId === b.id}
+                            disabled={deletingBookingId === b.id || !canDeleteBooking(b)}
                             className="rounded-md border px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
+                            title={
+                              canDeleteBooking(b)
+                                ? ""
+                                : `Less than ${PROTECTED_TIME_IN_MINUTE / 60} hours before start / 距离开始不足${PROTECTED_TIME_IN_MINUTE / 60}小时不可删除`
+                            }
                           >
                             {deletingBookingId === b.id ? "Deleting..." : "Delete / 删除"}
                           </button>

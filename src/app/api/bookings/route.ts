@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 import { BOOKING_DURATION_MIN } from "@/lib/bookingConfig";
-
+import { PROTECTED_TIME_IN_MINUTE } from "@/lib/bookingConfig";
 type Body = {
   date: string;
   start: string;
@@ -177,7 +177,29 @@ export async function DELETE(req: NextRequest) {
   if (targetBooking.wechat_id !== normalizedWechatId) {
     return Response.json({ error: "只能删除自己的预约" }, { status: 403 });
   }
+const { data: bookingTimeRow, error: bookingTimeError } = await supabase
+  .from("bookings")
+  .select("date, time")
+  .eq("id", id)
+  .maybeSingle();
 
+if (bookingTimeError) {
+  return Response.json(
+    { error: `Failed to load booking time: ${bookingTimeError.message}` },
+    { status: 500 }
+  );
+}
+
+if (!bookingTimeRow) {
+  return Response.json({ error: "预约不存在" }, { status: 404 });
+}
+
+const bookingStartMs = new Date(`${bookingTimeRow.date}T${bookingTimeRow.time}`).getTime();
+const diffMs = bookingStartMs - Date.now();
+
+if (diffMs < PROTECTED_TIME_IN_MINUTE * 60 * 1000) {
+  return Response.json({ error: "距离预约开始不足${PROTECTED_TIME_IN_MINUTE/60}小时，无法删除" }, { status: 403 });
+}
   const { error: deleteError } = await supabase
     .from("bookings")
     .delete()
