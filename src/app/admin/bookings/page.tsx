@@ -13,6 +13,51 @@ type Booking = {
   created_at: string;
 };
 
+function BookingTable({
+  title,
+  bookings,
+}: {
+  title: string;
+  bookings: Booking[];
+}) {
+  return (
+    <div>
+      <h2 className="mb-2 text-lg font-medium">{title}</h2>
+
+      {bookings.length === 0 ? (
+        <p className="text-sm text-gray-500">no data</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full border-collapse border text-sm">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="border px-4 py-2 text-left">date</th>
+                <th className="border px-4 py-2 text-left">time</th>
+                <th className="border px-4 py-2 text-left">contact</th>
+                <th className="border px-4 py-2 text-left">status</th>
+                <th className="border px-4 py-2 text-left">created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.map((b) => (
+                <tr key={b.id}>
+                  <td className="border px-4 py-2">{b.date}</td>
+                  <td className="border px-4 py-2">{b.time.slice(0, 5)}</td>
+                  <td className="border px-4 py-2">{b.wechat_id}</td>
+                  <td className="border px-4 py-2">{b.status}</td>
+                  <td className="border px-4 py-2">
+                    {new Date(b.created_at).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminBookingsPage() {
   const [date, setDate] = useState(todayLocal());
   const [futureBookings, setFutureBookings] = useState<Booking[]>([]);
@@ -48,7 +93,7 @@ export default function AdminBookingsPage() {
 
   useEffect(() => {
     loadBookings();
-  }, [date]);
+  },[date]);
 
   return (
     <main className="min-h-screen p-6">
@@ -71,65 +116,15 @@ export default function AdminBookingsPage() {
 
           {!loading && !error && (
             <div className="space-y-6">
-              <div>
-                <h2 className="mb-2 text-lg font-medium">reservation in future {BOOKING_WINDOW_DAYS} days</h2>
-                {futureBookings.length === 0 ? (
-                  <p className="text-sm text-gray-500">no reservation in future {BOOKING_WINDOW_DAYS} days</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse border text-sm">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border px-4 py-2 text-left">date</th>
-                          <th className="border px-4 py-2 text-left">time</th>
-                          <th className="border px-4 py-2 text-left">contact</th>
-                          <th className="border px-4 py-2 text-left">status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {futureBookings.map((b) => (
-                          <tr key={`future-${b.id}`}>
-                            <td className="border px-4 py-2">{b.date}</td>
-                            <td className="border px-4 py-2">{b.time.slice(0,5)}</td>
-                            <td className="border px-4 py-2">{b.wechat_id}</td>
-                            <td className="border px-4 py-2">{b.status}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <BookingTable
+                title={`reservation in future ${BOOKING_WINDOW_DAYS} days`}
+                bookings={futureBookings}
+              />
 
-              <div>
-                <h2 className="mb-2 text-lg font-medium">reservation in past {BOOKING_WINDOW_DAYS} days</h2>
-                {pastBookings.length === 0 ? (
-                  <p className="text-sm text-gray-500">no resercation in past {BOOKING_WINDOW_DAYS} days</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse border text-sm">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border px-4 py-2 text-left">date</th>
-                          <th className="border px-4 py-2 text-left">time</th>
-                          <th className="border px-4 py-2 text-left">contact</th>
-                          <th className="border px-4 py-2 text-left">status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pastBookings.map((b) => (
-                          <tr key={`past-${b.id}`}>
-                            <td className="border px-4 py-2">{b.date}</td>
-                            <td className="border px-4 py-2">{b.time.slice(0,5)}</td>
-                            <td className="border px-4 py-2">{b.wechat_id}</td>
-                            <td className="border px-4 py-2">{b.status}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+              <BookingTable
+                title={`reservation in past ${BOOKING_WINDOW_DAYS} days`}
+                bookings={pastBookings}
+              />
             </div>
           )}
         </div>

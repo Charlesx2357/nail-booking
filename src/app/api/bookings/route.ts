@@ -8,6 +8,11 @@ type Body = {
   wechatId: string;
 };
 
+type DeleteBody = {
+  id: number;
+  wechatId: string;
+};
+
 function isValidDate(d: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(d);
 }
@@ -19,6 +24,36 @@ function isValidTime(t: string) {
 function toMinutes(t: string): number {
   const [hh, mm] = t.split(":").map(Number);
   return hh * 60 + mm;
+}
+export async function GET(req: NextRequest) {
+  const wechatId = req.nextUrl.searchParams.get("wechatId");
+
+  if (!wechatId || wechatId.trim().length < 2) {
+    return Response.json(
+      { error: "Missing or invalid ?wechatId=" },
+      { status: 400 }
+    );
+  }
+
+  const normalizedWechatId = wechatId.trim();
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("id, date, time, wechat_id, status, created_at")
+    .eq("wechat_id", normalizedWechatId)
+    .order("date", { ascending: false })
+    .order("time", { ascending: true });
+
+  if (error) {
+    return Response.json(
+      { error: `Failed to load bookings: ${error.message}` },
+      { status: 500 }
+    );
+  }
+
+  return Response.json({
+    bookings: data ?? [],
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -91,6 +126,67 @@ export async function POST(req: NextRequest) {
 
     return Response.json(
       { error: `Failed to create booking: ${error.message}` },
+      { status: 500 }
+    );
+  }
+
+  return Response.json({ ok: true });
+}
+
+export async function DELETE(req: NextRequest) {
+  let body: DeleteBody;
+
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { id, wechatId } = body;
+
+  if (!id || !wechatId) {
+    return Response.json(
+      { error: "Missing fields: id/wechatId" },
+      { status: 400 }
+    );
+  }
+
+  if (wechatId.trim().length < 2) {
+    return Response.json({ error: "微信号太短了" }, { status: 400 });
+  }
+
+  const normalizedWechatId = wechatId.trim();
+
+  const { data: targetBooking, error: targetError } = await supabase
+    .from("bookings")
+    .select("id, wechat_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (targetError) {
+    return Response.json(
+      { error: `Failed to load booking: ${targetError.message}` },
+      { status: 500 }
+    );
+  }
+
+  if (!targetBooking) {
+    return Response.json({ error: "预约不存在" }, { status: 404 });
+  }
+
+  if (targetBooking.wechat_id !== normalizedWechatId) {
+    return Response.json({ error: "只能删除自己的预约" }, { status: 403 });
+  }
+
+  const { error: deleteError } = await supabase
+    .from("bookings")
+    .delete()
+    .eq("id", id)
+    .eq("wechat_id", normalizedWechatId);
+
+  if (deleteError) {
+    return Response.json(
+      { error: `Failed to delete booking: ${deleteError.message}` },
       { status: 500 }
     );
   }
