@@ -11,7 +11,41 @@ type Booking = {
   wechat_id: string;
   status: string;
   created_at: string;
+  removal_type?: string | null;
+  style_type?: string | null;
+  duration_min?: number | null;
 };
+
+function formatRemovalType(value?: string | null): string {
+  switch (value) {
+    case "none":
+      return "No removal";
+    case "extension_removal":
+      return "Extension removal";
+    case "natural_removal":
+      return "Natural nail removal";
+    default:
+      return "-";
+  }
+}
+
+function formatStyleType(value?: string | null): string {
+  switch (value) {
+    case "basic":
+      return "Basic";
+    case "extension":
+      return "Extension";
+    default:
+      return "-";
+  }
+}
+
+function formatCourse(booking: Booking): string {
+  const removal = formatRemovalType(booking.removal_type);
+  const style = formatStyleType(booking.style_type);
+  const duration = booking.duration_min ?? "-";
+  return `${removal} / ${style} / ${duration} min`;
+}
 
 function BookingTable({
   title,
@@ -34,6 +68,7 @@ function BookingTable({
                 <th className="border px-4 py-2 text-left">date</th>
                 <th className="border px-4 py-2 text-left">time</th>
                 <th className="border px-4 py-2 text-left">contact</th>
+                <th className="border px-4 py-2 text-left">course</th>
                 <th className="border px-4 py-2 text-left">status</th>
                 <th className="border px-4 py-2 text-left">created</th>
               </tr>
@@ -44,6 +79,7 @@ function BookingTable({
                   <td className="border px-4 py-2">{b.date}</td>
                   <td className="border px-4 py-2">{b.time.slice(0, 5)}</td>
                   <td className="border px-4 py-2">{b.wechat_id}</td>
+                  <td className="border px-4 py-2">{formatCourse(b)}</td>
                   <td className="border px-4 py-2">{b.status}</td>
                   <td className="border px-4 py-2">
                     {new Date(b.created_at).toLocaleString()}

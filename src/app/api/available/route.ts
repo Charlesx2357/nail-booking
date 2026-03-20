@@ -1,15 +1,28 @@
 import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
-import { STEP_MIN, BOOKING_DURATION_MIN } from "@/lib/bookingConfig";
+import {
+  STEP_MIN,
+  BASE_BOOKING_DURATION_MIN,
+  REMOVAL_OPTIONS,
+  STYLE_OPTIONS,
+} from "@/lib/bookingConfig";
 import { toMinutes, toHHMM } from "@/lib/time";
-import { buildUnavailableSlots } from "@/lib/bookingLogic";
 
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get("date");
+  const removalType = req.nextUrl.searchParams.get("removalType") as keyof typeof REMOVAL_OPTIONS | null;
+  const styleType = req.nextUrl.searchParams.get("styleType") as keyof typeof STYLE_OPTIONS | null;
 
   if (!date) {
     return Response.json(
       { error: "Missing ?date=YYYY-MM-DD" },
+      { status: 400 }
+    );
+  }
+
+  if (!removalType || !(removalType in REMOVAL_OPTIONS) || !styleType || !(styleType in STYLE_OPTIONS)) {
+    return Response.json(
+      { error: "Missing or invalid removalType/styleType" },
       { status: 400 }
     );
   }
@@ -27,9 +40,15 @@ export async function GET(req: NextRequest) {
       { status: 500 }
     );
   }
+
+  const bookingDurationMin =
+    BASE_BOOKING_DURATION_MIN +
+    REMOVAL_OPTIONS[removalType] +
+    STYLE_OPTIONS[styleType];
+
   const { data: bookingRows, error: bookingError } = await supabase
     .from("bookings")
-    .select("time")
+    .select("time, duration_min")
     .eq("date", date)
     .eq("status", "booked");
   
@@ -39,27 +58,24 @@ export async function GET(req: NextRequest) {
       {status:500}
     );
   }
-  const bookings = (bookingRows ?? []).map((row) => ({
-    start: row.time.slice(0, 5),
-    durationMin: BOOKING_DURATION_MIN,
-  }));
 
   const openSlotMinutes: number[] = (slotRows ?? []).map((row) =>
     toMinutes(row.time.slice(0, 5))
   );
   const openSlotSet = new Set(openSlotMinutes);
 
+  const unavailable = new Set<number>();
 
-const bookingStarts = (bookingRows ?? []).map((row) =>
-  toMinutes(row.time.slice(0, 5))
-);
+  (bookingRows ?? []).forEach((row) => {
+    const start = toMinutes(row.time.slice(0, 5));
+    const duration = row.duration_min ?? BASE_BOOKING_DURATION_MIN;
+    const steps = Math.ceil(duration / STEP_MIN);
+    for (let i = 0; i < steps; i++) {
+      unavailable.add(start + i * STEP_MIN);
+    }
+  });
 
-const unavailable = buildUnavailableSlots(
-  bookingStarts,
-  BOOKING_DURATION_MIN,
-  STEP_MIN
-);
-  const requiredSteps = BOOKING_DURATION_MIN / STEP_MIN;
+  const requiredSteps = Math.ceil(bookingDurationMin / STEP_MIN);
 
   const available = openSlotMinutes
     .filter((start) => {

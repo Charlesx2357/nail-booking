@@ -1,17 +1,34 @@
 import { NextRequest } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
-import { BOOKING_DURATION_MIN } from "@/lib/bookingConfig";
-import { PROTECTED_TIME_IN_MINUTE } from "@/lib/bookingConfig";
+import {
+  BASE_BOOKING_DURATION_MIN,
+  PROTECTED_TIME_IN_MINUTE,
+  REMOVAL_OPTIONS,
+  STYLE_OPTIONS,
+} from "@/lib/bookingConfig";
+type RemovalType = keyof typeof REMOVAL_OPTIONS;
+type StyleType = keyof typeof STYLE_OPTIONS;
+
 type Body = {
   date: string;
   start: string;
   wechatId: string;
+  removalType: RemovalType;
+  styleType: StyleType;
 };
 
 type DeleteBody = {
   id: number;
   wechatId: string;
 };
+
+function isValidRemovalType(value: string): value is RemovalType {
+  return value in REMOVAL_OPTIONS;
+}
+
+function isValidStyleType(value: string): value is StyleType {
+  return value in STYLE_OPTIONS;
+}
 
 function isValidDate(d: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(d);
@@ -39,7 +56,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("bookings")
-    .select("id, date, time, wechat_id, status, created_at")
+    .select("id, date, time, wechat_id, status, created_at, removal_type, style_type, duration_min")
     .eq("wechat_id", normalizedWechatId)
     .order("date", { ascending: false })
     .order("time", { ascending: true });
@@ -66,11 +83,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { date, start, wechatId } = body;
+  const { date, start, wechatId, removalType, styleType } = body;
 
-  if (!date || !start || !wechatId) {
+  if (!date || !start || !wechatId || !removalType || !styleType) {
     return Response.json(
-      { error: "Missing fields: date/start/wechatId" },
+      { error: "Missing fields: date/start/wechatId/removalType/styleType" },
       { status: 400 }
     );
   }
@@ -81,14 +98,25 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
+  if (!isValidRemovalType(removalType) || !isValidStyleType(styleType)) {
+    return Response.json(
+      { error: "Invalid removalType or styleType" },
+      { status: 400 }
+    );
+  }
 
   if (wechatId.trim().length < 2) {
     return Response.json({ error: "微信号太短了" }, { status: 400 });
   }
+  const normalizedWechatId = wechatId.trim();
+  const bookingDurationMin =
+    BASE_BOOKING_DURATION_MIN +
+    REMOVAL_OPTIONS[removalType] +
+    STYLE_OPTIONS[styleType];
 
   const { data: existingRows, error: existingError } = await supabase
     .from("bookings")
-    .select("time")
+    .select("time, duration_min")
     .eq("date", date)
     .eq("status", "booked");
 
@@ -100,11 +128,12 @@ export async function POST(req: NextRequest) {
   }
 
   const newStart = toMinutes(start);
-  const newEnd = newStart + BOOKING_DURATION_MIN;
+  const newEnd = newStart + bookingDurationMin;
 
   const hasConflict = (existingRows ?? []).some((row) => {
     const oldStart = toMinutes(row.time.slice(0, 5));
-    const oldEnd = oldStart + BOOKING_DURATION_MIN;
+    const oldDurationMin = row.duration_min ?? BASE_BOOKING_DURATION_MIN;
+    const oldEnd = oldStart + oldDurationMin;
     return newStart < oldEnd && oldStart < newEnd;
   });
 
@@ -115,8 +144,11 @@ export async function POST(req: NextRequest) {
   const { error } = await supabase.from("bookings").insert({
     date,
     time: start,
-    wechat_id: wechatId.trim(),
+    wechat_id: normalizedWechatId,
     status: "booked",
+    removal_type: removalType,
+    style_type: styleType,
+    duration_min: bookingDurationMin,
   });
 
   if (error) {
@@ -198,7 +230,7 @@ const bookingStartMs = new Date(`${bookingTimeRow.date}T${bookingTimeRow.time}`)
 const diffMs = bookingStartMs - Date.now();
 
 if (diffMs < PROTECTED_TIME_IN_MINUTE * 60 * 1000) {
-  return Response.json({ error: "距离预约开始不足${PROTECTED_TIME_IN_MINUTE/60}小时，无法删除" }, { status: 403 });
+  return Response.json({ error: `距离预约开始不足${PROTECTED_TIME_IN_MINUTE / 60}小时，无法删除` }, { status: 403 });
 }
   const { error: deleteError } = await supabase
     .from("bookings")

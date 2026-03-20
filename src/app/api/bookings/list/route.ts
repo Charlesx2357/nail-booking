@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const { data: futureBookings, error: futureError } = await supabase
     .from("bookings")
-    .select("*")
+    .select("id, date, time, wechat_id, status, created_at, removal_type, style_type, duration_min")
     .gte("date", date)
     .lte("date", futureEndStr)
     .order("date", { ascending: true })
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   const { data: pastBookings, error: pastError } = await supabase
     .from("bookings")
-    .select("*")
+    .select("id, date, time, wechat_id, status, created_at, removal_type, style_type, duration_min")
     .gte("date", pastStartStr)
     .lte("date", yesterdayStr)
     .order("date", { ascending: false })
